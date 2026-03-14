@@ -1,0 +1,35 @@
+{
+  "name": "road-bike-tuning-lab",
+  "version": "1.0.0",
+  "description": "Road bike tuning workflows for triathletes and road riders.",
+  "main": "dist/coach.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/coach.ts",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goblinsan/road-bike-tuning-lab.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/goblinsan/road-bike-tuning-lab/issues"
+  },
+  "homepage": "https://github.com/goblinsan/road-bike-tuning-lab#readme",
+  "devDependencies": {
+    "@types/inquirer": "^8.2.12",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "inquirer": "^8.2.7"
+  }
+}
