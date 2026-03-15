@@ -3,12 +3,20 @@ import { RearDerailleurWizard } from './rearDerailleurWizard';
 import { FrontDerailleurWizard } from './frontDerailleurWizard';
 import { SymptomDiagnosis } from './symptomDiagnosis';
 import { TestRideChecklist } from './testRideChecklist';
+import { PreRaceChecklist } from './preRaceChecklist';
+import { ChainWearGuide } from './chainWearGuide';
+import { RiderSetupNotes } from './riderSetupNotes';
+import { MaintenanceScheduler } from './maintenanceScheduler';
 
 export type MainMenuChoice =
   | 'rear_derailleur'
   | 'front_derailleur'
   | 'symptom_diagnosis'
   | 'test_ride_checklist'
+  | 'pre_race_checklist'
+  | 'chain_wear_guide'
+  | 'rider_setup_notes'
+  | 'maintenance_scheduler'
   | 'exit';
 
 /**
@@ -42,6 +50,18 @@ export class BikeCoach {
           break;
         case 'test_ride_checklist':
           await new TestRideChecklist().start();
+          break;
+        case 'pre_race_checklist':
+          await new PreRaceChecklist().start();
+          break;
+        case 'chain_wear_guide':
+          await new ChainWearGuide().start();
+          break;
+        case 'rider_setup_notes':
+          await new RiderSetupNotes().start();
+          break;
+        case 'maintenance_scheduler':
+          await new MaintenanceScheduler().start();
           break;
         case 'exit':
           running = false;
@@ -88,6 +108,22 @@ export class BikeCoach {
           {
             name: '✅ Test Ride Checklist     — Before/after verification',
             value: 'test_ride_checklist',
+          },
+          {
+            name: '🏁 Pre-Race Checklist      — Triathlon race-week bike prep',
+            value: 'pre_race_checklist',
+          },
+          {
+            name: '🔗 Chain Wear Guide        — Wear thresholds & tool recommendations',
+            value: 'chain_wear_guide',
+          },
+          {
+            name: '📐 Rider Setup Notes       — Fit deltas & cockpit tweaks',
+            value: 'rider_setup_notes',
+          },
+          {
+            name: '🗓️  Maintenance Scheduler   — Periodic checks by mileage/time',
+            value: 'maintenance_scheduler',
           },
           {
             name: '👋 Exit',
