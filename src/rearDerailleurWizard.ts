@@ -1,4 +1,5 @@
 import inquirer from 'inquirer';
+import { showInstructionsOneByone } from './wizardUtils';
 
 export type RearStepId =
   | 'pre_check'
@@ -328,20 +329,7 @@ export class RearDerailleurWizard {
    * so the user does not need to scroll back on a small screen.
    */
   private async showInstructionsOneByone(instructions: string[]): Promise<void> {
-    for (let i = 0; i < instructions.length; i++) {
-      console.log(`\n${instructions[i]}`);
-      if (i < instructions.length - 1) {
-        await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'next',
-            message: 'Next instruction →',
-            default: true,
-          },
-        ]);
-      }
-    }
-    console.log();
+    await showInstructionsOneByone(instructions);
   }
 
   private printSummary(): void {
