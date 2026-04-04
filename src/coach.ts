@@ -7,6 +7,7 @@ import { PreRaceChecklist } from './preRaceChecklist';
 import { ChainWearGuide } from './chainWearGuide';
 import { RiderSetupNotes } from './riderSetupNotes';
 import { MaintenanceScheduler } from './maintenanceScheduler';
+import { Glossary } from './glossary';
 
 export type MainMenuChoice =
   | 'rear_derailleur'
@@ -17,6 +18,7 @@ export type MainMenuChoice =
   | 'chain_wear_guide'
   | 'rider_setup_notes'
   | 'maintenance_scheduler'
+  | 'glossary'
   | 'exit';
 
 /**
@@ -24,6 +26,8 @@ export type MainMenuChoice =
  * Main entry point that routes users to the appropriate tuning workflow.
  */
 export class BikeCoach {
+  private mobileMode = false;
+
   /**
    * Start the interactive coaching session.
    */
@@ -34,16 +38,30 @@ export class BikeCoach {
     console.log('╚══════════════════════════════════════╝\n');
     console.log('Welcome! This coach guides you through rear and front derailleur tuning.\n');
 
+    const { mobile } = await inquirer.prompt<{ mobile: boolean }>([
+      {
+        type: 'confirm',
+        name: 'mobile',
+        message: '📱 Are you using this on a phone near your bike stand? (enables mobile-friendly step display)',
+        default: false,
+      },
+    ]);
+    this.mobileMode = mobile;
+
+    if (this.mobileMode) {
+      console.log('\n✅ Mobile mode enabled — instructions will be shown one at a time.\n');
+    }
+
     let running = true;
     while (running) {
       const choice = await this.showMainMenu();
 
       switch (choice) {
         case 'rear_derailleur':
-          await new RearDerailleurWizard().start();
+          await new RearDerailleurWizard({ mobileMode: this.mobileMode }).start();
           break;
         case 'front_derailleur':
-          await new FrontDerailleurWizard().start();
+          await new FrontDerailleurWizard({ mobileMode: this.mobileMode }).start();
           break;
         case 'symptom_diagnosis':
           await new SymptomDiagnosis().start();
@@ -62,6 +80,9 @@ export class BikeCoach {
           break;
         case 'maintenance_scheduler':
           await new MaintenanceScheduler().start();
+          break;
+        case 'glossary':
+          await new Glossary().start();
           break;
         case 'exit':
           running = false;
@@ -124,6 +145,10 @@ export class BikeCoach {
           {
             name: '🗓️  Maintenance Scheduler   — Periodic checks by mileage/time',
             value: 'maintenance_scheduler',
+          },
+          {
+            name: '📚 Glossary                — Definitions of drivetrain parts & adjustments',
+            value: 'glossary',
           },
           {
             name: '👋 Exit',
