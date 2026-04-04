@@ -8,6 +8,9 @@ import { ChainWearGuide } from './chainWearGuide';
 import { RiderSetupNotes } from './riderSetupNotes';
 import { MaintenanceScheduler } from './maintenanceScheduler';
 import { Glossary } from './glossary';
+import { TuningPatternReview } from './patternReview';
+import { ReleaseNotesViewer } from './releaseNotes';
+import { outcomeTracker } from './outcomeTracker';
 
 export type MainMenuChoice =
   | 'rear_derailleur'
@@ -19,6 +22,8 @@ export type MainMenuChoice =
   | 'rider_setup_notes'
   | 'maintenance_scheduler'
   | 'glossary'
+  | 'pattern_review'
+  | 'release_notes'
   | 'exit';
 
 /**
@@ -83,6 +88,12 @@ export class BikeCoach {
           break;
         case 'glossary':
           await new Glossary().start();
+          break;
+        case 'pattern_review':
+          await new TuningPatternReview(outcomeTracker).start();
+          break;
+        case 'release_notes':
+          await new ReleaseNotesViewer().start();
           break;
         case 'exit':
           running = false;
@@ -149,6 +160,14 @@ export class BikeCoach {
           {
             name: '📚 Glossary                — Definitions of drivetrain parts & adjustments',
             value: 'glossary',
+          },
+          {
+            name: '📈 Pattern Review          — Monthly insights from tuning outcomes',
+            value: 'pattern_review',
+          },
+          {
+            name: "🆕 What's New              — Release notes and user education tips",
+            value: 'release_notes',
           },
           {
             name: '👋 Exit',
