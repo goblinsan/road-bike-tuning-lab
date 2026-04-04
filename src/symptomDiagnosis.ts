@@ -1,6 +1,8 @@
 import inquirer from 'inquirer';
 import { RearDerailleurWizard, RearStepId } from './rearDerailleurWizard';
 import { FrontDerailleurWizard, FrontStepId } from './frontDerailleurWizard';
+import { outcomeTracker } from './outcomeTracker';
+import { ConfidenceScorer } from './confidenceScoring';
 
 export type Symptom =
   | 'skips_gears'
@@ -156,6 +158,8 @@ export class SymptomDiagnosis {
       'Describe what you are experiencing and we will jump directly to the relevant fix.\n'
     );
 
+    const scorer = new ConfidenceScorer(outcomeTracker);
+
     const { selectedSymptom } = await inquirer.prompt<{ selectedSymptom: Symptom }>([
       {
         type: 'list',
@@ -176,7 +180,9 @@ export class SymptomDiagnosis {
       return;
     }
 
+    const scored = scorer.scoreRoute(route);
     console.log(`\n💡 Diagnosis: ${route.explanation}`);
+    console.log(`   ${scorer.formatScore(scored)}`);
     console.log(
       `\n➡️  Jumping to: ${route.derailleur === 'rear' ? 'Rear' : 'Front'} Derailleur Wizard — Step: "${route.startStep}"\n`
     );
@@ -195,10 +201,36 @@ export class SymptomDiagnosis {
       return;
     }
 
+    let wizardResult: { completedSteps: string[]; skippedSteps: string[]; notes: string[] };
+
     if (route.derailleur === 'rear') {
-      await this.runRearWizard(route.startStep as RearStepId);
+      wizardResult = await this.runRearWizard(route.startStep as RearStepId);
     } else {
-      await this.runFrontWizard(route.startStep as FrontStepId);
+      wizardResult = await this.runFrontWizard(route.startStep as FrontStepId);
+    }
+
+    const { resolved } = await inquirer.prompt<{ resolved: boolean }>([
+      {
+        type: 'confirm',
+        name: 'resolved',
+        message: '✅ Did the wizard resolve your issue?',
+        default: true,
+      },
+    ]);
+
+    outcomeTracker.recordOutcome({
+      symptom: selectedSymptom,
+      wizardType: route.derailleur,
+      startStep: String(route.startStep),
+      completedSteps: wizardResult.completedSteps,
+      skippedSteps: wizardResult.skippedSteps,
+      resolved,
+    });
+
+    if (resolved) {
+      console.log('\n🎉 Great — outcome recorded. This will help improve future recommendations.\n');
+    } else {
+      console.log('\n📝 Outcome recorded. Consider trying an alternative step or checking component wear.\n');
     }
   }
 
@@ -209,14 +241,14 @@ export class SymptomDiagnosis {
     return DIAGNOSIS_ROUTES.find((r) => r.symptom === symptom);
   }
 
-  private async runRearWizard(startFrom?: RearStepId): Promise<void> {
+  private async runRearWizard(startFrom?: RearStepId): Promise<{ completedSteps: string[]; skippedSteps: string[]; notes: string[] }> {
     const wizard = new RearDerailleurWizard();
-    await wizard.start(startFrom);
+    return wizard.start(startFrom);
   }
 
-  private async runFrontWizard(startFrom?: FrontStepId): Promise<void> {
+  private async runFrontWizard(startFrom?: FrontStepId): Promise<{ completedSteps: string[]; skippedSteps: string[]; notes: string[] }> {
     const wizard = new FrontDerailleurWizard();
-    await wizard.start(startFrom);
+    return wizard.start(startFrom);
   }
 }
 

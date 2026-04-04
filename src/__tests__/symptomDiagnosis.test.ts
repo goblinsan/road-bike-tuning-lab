@@ -32,6 +32,20 @@ jest.mock('../frontDerailleurWizard', () => ({
   FRONT_STEPS: [],
 }));
 
+// Mock the outcome tracker so no real state accumulates across tests
+jest.mock('../outcomeTracker', () => ({
+  outcomeTracker: { recordOutcome: jest.fn(), getOutcomesForSymptom: jest.fn().mockReturnValue([]) },
+  TuningOutcomeTracker: jest.fn(),
+}));
+
+// Mock the confidence scorer to keep tests simple
+jest.mock('../confidenceScoring', () => ({
+  ConfidenceScorer: jest.fn().mockImplementation(() => ({
+    scoreRoute: jest.fn().mockReturnValue({ confidence: null, sampleSize: 0 }),
+    formatScore: jest.fn().mockReturnValue('[No data yet]'),
+  })),
+}));
+
 import inquirer from 'inquirer';
 const mockPrompt = inquirer.prompt as jest.MockedFunction<typeof inquirer.prompt>;
 
@@ -123,12 +137,13 @@ describe('SymptomDiagnosis.start', () => {
 
   it('routes to the rear wizard with correct startStep for skips_gears', async () => {
     const { RearDerailleurWizard } = require('../rearDerailleurWizard');
-    const mockStart = jest.fn().mockResolvedValue({});
+    const mockStart = jest.fn().mockResolvedValue({ completedSteps: [], skippedSteps: [], notes: [] });
     RearDerailleurWizard.mockImplementation(() => ({ start: mockStart }));
 
     mockPrompt
       .mockResolvedValueOnce({ selectedSymptom: 'skips_gears' } as never)
-      .mockResolvedValueOnce({ proceed: true } as never);
+      .mockResolvedValueOnce({ proceed: true } as never)
+      .mockResolvedValueOnce({ resolved: true } as never);
 
     const diagnosis = new SymptomDiagnosis();
     await diagnosis.start();
@@ -138,12 +153,13 @@ describe('SymptomDiagnosis.start', () => {
 
   it('routes to the front wizard for chain_rub_front', async () => {
     const { FrontDerailleurWizard } = require('../frontDerailleurWizard');
-    const mockStart = jest.fn().mockResolvedValue({});
+    const mockStart = jest.fn().mockResolvedValue({ completedSteps: [], skippedSteps: [], notes: [] });
     FrontDerailleurWizard.mockImplementation(() => ({ start: mockStart }));
 
     mockPrompt
       .mockResolvedValueOnce({ selectedSymptom: 'chain_rub_front' } as never)
-      .mockResolvedValueOnce({ proceed: true } as never);
+      .mockResolvedValueOnce({ proceed: true } as never)
+      .mockResolvedValueOnce({ resolved: false } as never);
 
     const diagnosis = new SymptomDiagnosis();
     await diagnosis.start();
