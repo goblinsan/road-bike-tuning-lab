@@ -15,6 +15,8 @@ export interface FrontTuningStep {
   instructions: string[];
   validationQuestion: string;
   troubleshootingTips: string[];
+  toolsRequired?: string[];
+  safetyWarning?: string;
 }
 
 export interface FrontWizardResult {
@@ -27,6 +29,7 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'pre_check',
     title: 'Pre-Check: Inspection & Cleaning',
+    toolsRequired: ['4 mm or 5 mm hex key (clamp/mount bolt)', 'Chain cleaning solvent', 'Lint-free rag'],
     instructions: [
       '1. Inspect the front derailleur clamp or braze-on mount — it must be tight with no play.',
       '2. Check the shift cable for fraying, kinks, or corrosion. Replace if worn.',
@@ -44,6 +47,7 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'height',
     title: 'Height Adjustment',
+    toolsRequired: ['4 mm or 5 mm hex key (clamp bolt)', 'Feeler gauge or ruler (1–3 mm reference)'],
     instructions: [
       '1. Look at the front derailleur from the side with the chain on the large chainring.',
       '2. The outer cage plate should sit 1–3 mm ABOVE the tallest teeth of the large chainring.',
@@ -62,6 +66,7 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'angle',
     title: 'Angle (Rotational Alignment)',
+    toolsRequired: ['4 mm or 5 mm hex key (clamp bolt)'],
     instructions: [
       '1. Look down at the front derailleur cage from above.',
       '2. The outer cage plate should run PARALLEL to the large chainring (within 1–2°).',
@@ -79,6 +84,9 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'l_limit',
     title: 'L-Limit Screw (Small Chainring)',
+    toolsRequired: ['Small Phillips or flat-head screwdriver (check derailleur label)'],
+    safetyWarning:
+      '⚠️  SAFETY: If the L-limit is set too loose the chain can drop off the inner chainring toward the frame, potentially jamming the drivetrain. Verify before riding.',
     instructions: [
       '1. Shift to the small chainring and the largest rear cog.',
       '2. Locate the L-limit screw (usually marked "L" on the derailleur body).',
@@ -98,6 +106,7 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'cable_tension',
     title: 'Cable Tension Reset',
+    toolsRequired: ['4 mm or 5 mm hex key (cable anchor bolt)'],
     instructions: [
       '1. Shift to the small chainring.',
       '2. Loosen the cable anchor bolt at the derailleur.',
@@ -117,6 +126,9 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'h_limit',
     title: 'H-Limit Screw (Large Chainring)',
+    toolsRequired: ['Small Phillips or flat-head screwdriver (check derailleur label)'],
+    safetyWarning:
+      '⚠️  SAFETY: Over-tightening the H-limit can cause the chain to skip back off the large ring under pedalling load. Test under power before race day.',
     instructions: [
       '1. Shift to the large chainring and the smallest rear cog.',
       '2. Locate the H-limit screw (usually marked "H" on the derailleur body).',
@@ -136,6 +148,7 @@ export const FRONT_STEPS: FrontTuningStep[] = [
   {
     id: 'friction_check',
     title: 'Friction-Rub Avoidance Check',
+    toolsRequired: ['No tools required — barrel adjuster adjusted by hand'],
     instructions: [
       '1. Shift to the LARGE chainring and LARGE rear cog (cross-chain inner position).',
       '2. Pedal slowly and listen for chain rub on the inner cage plate.',
@@ -168,17 +181,27 @@ export class FrontDerailleurWizard {
     notes: [],
   };
 
+  private mobileMode: boolean;
+
+  constructor(options: { mobileMode?: boolean } = {}) {
+    this.mobileMode = options.mobileMode ?? false;
+  }
+
   /**
    * Run the full wizard, optionally starting from a specific step.
    * @param startFrom - The step ID to begin from (default: first step)
    */
   async start(startFrom?: FrontStepId): Promise<FrontWizardResult> {
-    console.log('\n========================================');
-    console.log('  FRONT DERAILLEUR TUNING WIZARD');
-    console.log('========================================\n');
-    console.log(
-      'This wizard will guide you through height, angle, cable tension, and limit adjustments.\n'
-    );
+    if (this.mobileMode) {
+      console.log('\n== FRONT DERAILLEUR WIZARD (Mobile) ==\n');
+    } else {
+      console.log('\n========================================');
+      console.log('  FRONT DERAILLEUR TUNING WIZARD');
+      console.log('========================================\n');
+      console.log(
+        'This wizard will guide you through height, angle, cable tension, and limit adjustments.\n'
+      );
+    }
 
     const startIndex = startFrom
       ? FRONT_STEPS.findIndex((s) => s.id === startFrom)
@@ -209,8 +232,34 @@ export class FrontDerailleurWizard {
 
   private async runStep(step: FrontTuningStep, current: number, total: number): Promise<boolean> {
     console.log(`\n--- Step ${current} of ${total}: ${step.title} ---\n`);
-    step.instructions.forEach((line) => console.log(line));
-    console.log();
+
+    if (step.safetyWarning) {
+      console.log(`${step.safetyWarning}\n`);
+    }
+
+    if (step.toolsRequired && step.toolsRequired.length > 0) {
+      console.log('🛠️  Tools needed for this step:');
+      step.toolsRequired.forEach((tool) => console.log(`   • ${tool}`));
+      console.log();
+
+      if (this.mobileMode) {
+        await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'toolsReady',
+            message: 'Do you have the required tools ready?',
+            default: true,
+          },
+        ]);
+      }
+    }
+
+    if (this.mobileMode) {
+      await this.showInstructionsOneByone(step.instructions);
+    } else {
+      step.instructions.forEach((line) => console.log(line));
+      console.log();
+    }
 
     let validated = false;
     let attempts = 0;
@@ -258,14 +307,39 @@ export class FrontDerailleurWizard {
             return false;
           } else {
             console.log(`\n--- Re-reading: ${step.title} ---\n`);
-            step.instructions.forEach((line) => console.log(line));
-            console.log();
+            if (this.mobileMode) {
+              await this.showInstructionsOneByone(step.instructions);
+            } else {
+              step.instructions.forEach((line) => console.log(line));
+              console.log();
+            }
           }
         }
       }
     }
 
     return true;
+  }
+
+  /**
+   * In mobile mode, show each instruction one at a time with a "Next" prompt
+   * so the user does not need to scroll back on a small screen.
+   */
+  private async showInstructionsOneByone(instructions: string[]): Promise<void> {
+    for (let i = 0; i < instructions.length; i++) {
+      console.log(`\n${instructions[i]}`);
+      if (i < instructions.length - 1) {
+        await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'next',
+            message: 'Next instruction →',
+            default: true,
+          },
+        ]);
+      }
+    }
+    console.log();
   }
 
   private printSummary(): void {

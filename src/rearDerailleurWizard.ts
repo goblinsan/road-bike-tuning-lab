@@ -15,6 +15,8 @@ export interface TuningStep {
   instructions: string[];
   validationQuestion: string;
   troubleshootingTips: string[];
+  toolsRequired?: string[];
+  safetyWarning?: string;
 }
 
 export interface WizardResult {
@@ -27,6 +29,7 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'pre_check',
     title: 'Pre-Check: Visual Inspection',
+    toolsRequired: ['Hanger alignment tool', '4 mm hex key', 'Chain cleaning solvent', 'Lint-free rag'],
     instructions: [
       '1. Inspect the derailleur hanger — it must be perfectly straight. Bend or replace if needed.',
       '2. Check the shift cable for fraying, kinks, or corrosion. Replace if worn.',
@@ -44,6 +47,9 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'h_limit',
     title: 'H-Limit Screw (High / Smallest Cog)',
+    toolsRequired: ['Small Phillips or flat-head screwdriver (check derailleur label)'],
+    safetyWarning:
+      '⚠️  SAFETY: If the H-limit is set too loose the chain can fall off the smallest cog into the dropout, jamming the wheel. Always verify before riding.',
     instructions: [
       '1. Shift to the smallest rear cog (highest gear) and the large chainring.',
       '2. Look at the derailleur from behind — the upper pulley should align directly below the smallest cog.',
@@ -63,6 +69,9 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'l_limit',
     title: 'L-Limit Screw (Low / Largest Cog)',
+    toolsRequired: ['Small Phillips or flat-head screwdriver (check derailleur label)'],
+    safetyWarning:
+      '⚠️  SAFETY: A chain in the spokes at speed can lock the rear wheel and cause a crash. Never skip or rush this step.',
     instructions: [
       '1. Shift to the largest rear cog (lowest gear) and the small chainring.',
       '2. The upper pulley should align directly below the largest cog.',
@@ -83,6 +92,7 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'cable_tension',
     title: 'Cable Tension Reset',
+    toolsRequired: ['4 mm or 5 mm hex key (cable anchor bolt size varies by derailleur)'],
     instructions: [
       '1. Shift to the smallest rear cog.',
       '2. Loosen the cable anchor bolt at the derailleur.',
@@ -102,6 +112,7 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'indexing',
     title: 'Indexing (Cable Tension Fine-Tuning)',
+    toolsRequired: ['No tools required — barrel adjuster adjusted by hand'],
     instructions: [
       '1. Shift to the second-smallest cog (one click from smallest).',
       '2. Listen and watch: the chain should run silently with no hesitation.',
@@ -122,6 +133,7 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'b_screw',
     title: 'B-Screw (Upper Pulley Gap)',
+    toolsRequired: ['Small Phillips or flat-head screwdriver', 'Ruler or feeler gauge (5–8 mm reference)'],
     instructions: [
       '1. Shift to the largest rear cog.',
       '2. Look at the gap between the top of the upper jockey pulley and the bottom of the largest cog.',
@@ -141,6 +153,7 @@ export const REAR_STEPS: TuningStep[] = [
   {
     id: 'validation',
     title: 'Full-Range Gear Validation',
+    toolsRequired: ['Bike stand or helper to hold the bike'],
     instructions: [
       '1. Mount the bike on a stand or have a helper hold it.',
       '2. Spin the cranks and shift through every gear from smallest to largest cog.',
@@ -170,17 +183,27 @@ export class RearDerailleurWizard {
     notes: [],
   };
 
+  private mobileMode: boolean;
+
+  constructor(options: { mobileMode?: boolean } = {}) {
+    this.mobileMode = options.mobileMode ?? false;
+  }
+
   /**
    * Run the full wizard, optionally starting from a specific step.
    * @param startFrom - The step ID to begin from (default: first step)
    */
   async start(startFrom?: RearStepId): Promise<WizardResult> {
-    console.log('\n========================================');
-    console.log('  REAR DERAILLEUR TUNING WIZARD');
-    console.log('========================================\n');
-    console.log(
-      'This wizard will guide you through each adjustment stage with validation checkpoints.\n'
-    );
+    if (this.mobileMode) {
+      console.log('\n== REAR DERAILLEUR WIZARD (Mobile) ==\n');
+    } else {
+      console.log('\n========================================');
+      console.log('  REAR DERAILLEUR TUNING WIZARD');
+      console.log('========================================\n');
+      console.log(
+        'This wizard will guide you through each adjustment stage with validation checkpoints.\n'
+      );
+    }
 
     const startIndex = startFrom
       ? REAR_STEPS.findIndex((s) => s.id === startFrom)
@@ -211,8 +234,34 @@ export class RearDerailleurWizard {
 
   private async runStep(step: TuningStep, current: number, total: number): Promise<boolean> {
     console.log(`\n--- Step ${current} of ${total}: ${step.title} ---\n`);
-    step.instructions.forEach((line) => console.log(line));
-    console.log();
+
+    if (step.safetyWarning) {
+      console.log(`${step.safetyWarning}\n`);
+    }
+
+    if (step.toolsRequired && step.toolsRequired.length > 0) {
+      console.log('🛠️  Tools needed for this step:');
+      step.toolsRequired.forEach((tool) => console.log(`   • ${tool}`));
+      console.log();
+
+      if (this.mobileMode) {
+        await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'toolsReady',
+            message: 'Do you have the required tools ready?',
+            default: true,
+          },
+        ]);
+      }
+    }
+
+    if (this.mobileMode) {
+      await this.showInstructionsOneByone(step.instructions);
+    } else {
+      step.instructions.forEach((line) => console.log(line));
+      console.log();
+    }
 
     let validated = false;
     let attempts = 0;
@@ -260,14 +309,39 @@ export class RearDerailleurWizard {
             return false;
           } else {
             console.log(`\n--- Re-reading: ${step.title} ---\n`);
-            step.instructions.forEach((line) => console.log(line));
-            console.log();
+            if (this.mobileMode) {
+              await this.showInstructionsOneByone(step.instructions);
+            } else {
+              step.instructions.forEach((line) => console.log(line));
+              console.log();
+            }
           }
         }
       }
     }
 
     return true;
+  }
+
+  /**
+   * In mobile mode, show each instruction one at a time with a "Next" prompt
+   * so the user does not need to scroll back on a small screen.
+   */
+  private async showInstructionsOneByone(instructions: string[]): Promise<void> {
+    for (let i = 0; i < instructions.length; i++) {
+      console.log(`\n${instructions[i]}`);
+      if (i < instructions.length - 1) {
+        await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'next',
+            message: 'Next instruction →',
+            default: true,
+          },
+        ]);
+      }
+    }
+    console.log();
   }
 
   private printSummary(): void {
